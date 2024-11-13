@@ -25,8 +25,8 @@ def generate_verification_token():
     token = random.randint(100000, 999999)  # Generates a 6-digit token
     expiration = datetime.utcnow() + timedelta(minutes=1)
     token_data = {"token": token, "exp": expiration}
-    encoded_token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256")
-    return encoded_token, token  # Return both the encoded token and the raw 6-digit token
+    # encoded_token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256")
+    return token  # Return both the encoded token and the raw 6-digit token
 
 def verify_token(encoded_token):
     try:

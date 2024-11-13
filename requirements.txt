@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 sqlalchemy
-bcrypt
+bcrypt==3.2.0
 email-validator
 python-dotenv
 pydantic[email]
