@@ -1,0 +1,3 @@
+.env
+app/tes_mail.py
+app/test_connection.py

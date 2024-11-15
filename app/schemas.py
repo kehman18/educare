@@ -18,3 +18,6 @@ class UserLogin(BaseModel):
 class EmailVerification(BaseModel):
     email: EmailStr
     verification_token: str
+
+class RequestNewToken(BaseModel):
+    email: EmailStr
