@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+import re
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timedelta, timezone
 from .. import schemas, models, auth, email_utils
 from ..database import get_db
 
@@ -8,22 +10,38 @@ router = APIRouter()
 
 @router.post("/sign-up", status_code=status.HTTP_201_CREATED)
 async def sign_up(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Check if passwords match
     if user.password != user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
+    # Check for existing user by email or username
     existing_user = db.query(models.User).filter(
         (models.User.email == user.email) | (models.User.username == user.username)
     ).first()
-    print(f"Existing user query result: {existing_user}")
+    
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this username or email already exists")
 
+    # Validate email using the validate_email function
     try:
-        hashed_password = auth.get_password_hash(user.password)
-        token_data = auth.generate_verification_token()
+        auth.validate_email(user.email)  # If invalid, it will raise ValueError
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-        raw_token = token_data['token']
+        
+    try:
+        auth.validate_password(user.password)  # If invalid, it will raise ValueError
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
+    # Proceed with user creation
+    try:
+        hashed_password = auth.get_password_hash(user.password)  # Hash the password
+        token_data = auth.generate_verification_token()  # Generate a verification token
+
+        raw_token = str(token_data["token"])  # Extract the raw token
+
+        # Create a new user object
         new_user = models.User(
             first_name=user.first_name,
             last_name=user.last_name,
@@ -33,23 +51,25 @@ async def sign_up(user: schemas.UserCreate, db: Session = Depends(get_db)):
             course_level=user.course_level,
             state_of_school=user.state_of_school,
             hashed_password=hashed_password,
-            verification_token=raw_token
+            verification_token=raw_token  # Store raw token in the database
         )
 
+        # Save the user to the database
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        await email_utils.send_verification_email(user.email, raw_token)
+        await email_utils.send_verification_email(user.email, raw_token)  # Send the verification email
 
     except IntegrityError as e:
-        print(f"IntegrityError: {e}")
         db.rollback()
-        raise HTTPException(status_code=400, detail="User with the username or email already exists")
-    
+        raise HTTPException(status_code=400, detail="User with this username or email already exists")
+
     except Exception as e:
-        print(e)
         db.rollback()
-        raise HTTPException(status_code=500, detail="An error occurred while sending the verification email. Please try again later.")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while sending the verification email. Please try again later."
+        )
 
     return {"message": "Verification email sent. Please check your inbox."}
 
@@ -61,15 +81,22 @@ async def verify_email(verification: schemas.EmailVerification, db: Session = De
     if not user:
         raise HTTPException(status_code=400, detail="User not found")
 
-    token_data = auth.verify_token(user.verification_token)
+    # Ensure verification token is parsed and compared properly
+    try:
+        token_data = auth.verify_token({"token": user.verification_token, "exp": (datetime.now(timezone.utc) + timedelta(minutes=10)).timestamp()})  # # Ensuring token_data is passed as a dict
 
-    if not token_data or str(token_data["token"]) != verification.verification_token:
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+    # Compare raw tokens, not encoded ones
+    if not token_data or str(token_data["token"]) != verification.verification_token:  # # Fixed condition for string comparison
         raise HTTPException(status_code=400, detail="Invalid or expired token. Please request a new one.")
-    
+
     user.is_verified = True
     user.verification_token = None  # Clear token after verification
     db.commit()
     return {"message": "User successfully verified. Redirecting to login page."}
+
 
 @router.post("/request-new-token")
 async def request_new_token(request: schemas.RequestNewToken, db: Session = Depends(get_db)):
