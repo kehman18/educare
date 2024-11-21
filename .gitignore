@@ -1,3 +1,5 @@
+app/__pycache__/
+app/routers/__pycache__/
 .env
-app/tes_mail.py
+app/test_mail.py
 app/test_connection.py
