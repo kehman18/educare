@@ -114,6 +114,7 @@ async def request_new_token(request: schemas.RequestNewToken, db: Session = Depe
     await email_utils.send_verification_email(user.email, token_data["token"])
     return {"message": "A new verification token has been sent to your email."}
 
+
 @router.post("/login")
 async def login(user: schemas.UserLogin, response: Response, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(
@@ -129,6 +130,64 @@ async def login(user: schemas.UserLogin, response: Response, db: Session = Depen
     
     return {"message": "Login successful. Redirecting to dashboard."}
 
+
+@router.post("/login/forgot-password")
+async def forgot_password(email: schemas.ResetPassword, db: Session = Depends(get_db)):
+    # Step 1: Check if the email exists in the database
+    user = db.query(models.User).filter(models.User.email == email.email).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="User not registered with this email.")
+
+    # Step 2: Generate a verification token and send it to the user's email
+    token_data = auth.generate_verification_token()  # Generates a token
+    raw_token = str(token_data["token"])  # Extract the raw token
+    user.verification_token = raw_token  # Store the token in the user's record
+    db.commit()
+
+    # Send the verification token to the user's email
+    await email_utils.send_verification_email(user.email, raw_token)
+
+    return {"message": "Verification token sent. Please check your email."}
+
+
+@router.post("/login/reset-password")
+async def reset_password(token: schemas.EmailVerification, new_password: str, confirm_new_password: str, db: Session = Depends(get_db)):
+    # Step 1: Find the user by email
+    user = db.query(models.User).filter(models.User.email == token.email).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="User not registered with this email.")
+
+    # Step 2: Verify the token
+    try:
+        token_data = auth.verify_token({"token": user.verification_token, "exp": (datetime.now(timezone.utc) + timedelta(minutes=3)).timestamp()})
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid or expired token.")
+
+    # Compare raw tokens
+    if not token_data or str(token_data["token"]) != token.verification_token:
+        raise HTTPException(status_code=400, detail="Invalid or expired token. Please request a new one.")
+
+    # Step 3: Ensure passwords match
+    if new_password != confirm_new_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match.")
+
+    # Step 4: Validate the new password
+    try:
+        auth.validate_password(new_password)  # Validate the new password
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Step 5: Hash the new password and update in the database
+    hashed_password = auth.get_password_hash(new_password)
+    user.hashed_password = hashed_password
+    db.commit()
+
+    return {"message": "Password reset successful. Please log in with your new password."}
+
+    
 @router.get("/{username}/dashboard")
 async def dashboard(username: str, request: Request):
     session_data = auth.verify_session(request)

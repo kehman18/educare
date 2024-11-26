@@ -15,6 +15,9 @@ class UserLogin(BaseModel):
     username_or_email: str
     password: str
 
+class ResetPassword(BaseModel):
+    email: EmailStr
+
 class EmailVerification(BaseModel):
     email: EmailStr
     verification_token: str
