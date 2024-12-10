@@ -2,7 +2,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Request, Response, Depends
 import random
-import jwt
+#import jwt
 import os
 
 # Password hashing context
