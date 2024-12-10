@@ -9,4 +9,5 @@ pydantic_core==2.20.1
 pydantic-settings==2.0.3
 jose[cryptography]
 fastapi-sessions==0.3.2
+mysql-connector-python==9.1.0
 gunicorn
