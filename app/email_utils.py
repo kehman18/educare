@@ -17,7 +17,7 @@ async def send_verification_email(email: EmailStr, token: int):
     message = MessageSchema(
         subject="Email Verification",
         recipients=[email],
-        body=f"Your verification code is: {token}. It will expire in 1 minute.",
+        body=f"Your verification code is: {token}. It will expire in 2 minute.",
         subtype="plain"
     )
     fm = FastMail(conf)

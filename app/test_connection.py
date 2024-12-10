@@ -10,7 +10,8 @@ try:
     connection.close()
 except Exception as e:
     print(f"Failed to connect: {e}")
-'''
+
+    '''
 
 import mysql.connector
 from mysql.connector import Error

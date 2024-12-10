@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
-import re
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta, timezone
