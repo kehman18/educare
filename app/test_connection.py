@@ -11,8 +11,6 @@ try:
 except Exception as e:
     print(f"Failed to connect: {e}")
 
-    '''
-
 import mysql.connector
 from mysql.connector import Error
 
@@ -51,3 +49,4 @@ finally:
     # Close the connection if it's open
     if cnx.is_connected():
         cnx.close()
+'''
