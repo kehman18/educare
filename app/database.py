@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
@@ -14,11 +15,14 @@ port = os.getenv('port')
 database = os.getenv('database')
 ssl_ca_path = r"C:\Users\Owner\Downloads\DigiCertGlobalRootCA.crt.pem"  # Path to your SSL certificate
 
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 # Build the connection string for SQLAlchemy with SSL configuration
 DATABASE_URL = f"mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}?ssl_ca={ssl_ca_path}&ssl_verify_cert=true"
 
 # Create the SQLAlchemy engine with SSL configuration
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 
 # Create a session maker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
